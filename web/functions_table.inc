@@ -28,6 +28,9 @@ function prepare_entry(array $entry) : array
 {
   global $is_private_field, $show_registration_level, $auth, $kiosk;
 
+// MOD::LD identifico l'utente corrente se autenticato
+  global $all_public_to_users;
+
   // Add in the registration level details
   if ($show_registration_level && $entry['allow_registration'])
   {
@@ -53,8 +56,17 @@ function prepare_entry(array $entry) : array
     }
   }
 
+  // MOD::LD: se impostazione visualizza sempre gli eventi per gli utenti autenticati
+  if ($all_public_to_users) {
+    $mrbs_user = session()->getCurrentUser();
+    $override_public = (isset($mrbs_user) && $mrbs_user != "");
+  }
+  else
+    $override_public = false;
+
   // Check whether the event is private
   if (is_private_event($entry['private']) &&
+      (! $override_public) &&
       ($kiosk || !getWritable($entry['create_by'], $entry['room_id'])))
   {
     $entry['private'] = true;

@@ -616,7 +616,15 @@ $private = $row['private'];
 // Get the creator
 $create_by = $row['create_by'];
 $writeable = getWritable($row['create_by'], $row['room_id']);
-$keep_private = (is_private_event($private) && !$writeable);
+
+// MOD::LD: se impostazione visualizza sempre gli eventi per gli utenti autenticati
+global $all_public_to_users;
+if ($all_public_to_users)
+    $override_public = (isset($mrbs_user) && $mrbs_user != "");
+else
+    $override_public = false;
+
+$keep_private = (is_private_event($private) && !$override_public && !$writeable);
 
 // Work out when the last reminder was sent
 $last_reminded = (empty($row['reminded'])) ? $row['last_updated'] : $row['reminded'];
