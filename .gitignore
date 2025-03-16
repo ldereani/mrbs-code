@@ -11,3 +11,6 @@ web/config.inc.php
 /hg-code.iml
 /nbproject
 /.vs
+
+# Ignora i file di sistema Mac
+.DS_store

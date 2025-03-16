@@ -18,6 +18,7 @@ $vocab["report"]             = "Rapporto";
 $vocab["admin"]              = "Amministratore";
 $vocab["help"]               = "Aiuto";
 $vocab["search"]             = "Ricerca";
+$vocab["limit_end_of_school"]             = "Fino alla fine delle lezioni";
 
 // Used in index.php
 $vocab["outstanding"]        = "prenotazioni pendenti";

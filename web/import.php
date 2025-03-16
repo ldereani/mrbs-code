@@ -265,11 +265,37 @@ function get_event($handle)
   return $vevent;
 }
 
+// LD: arrotondamento all'ora
+function roundToNearestHour($timestamp) {
+  if (!is_numeric($timestamp)) {
+    throw new InvalidArgumentException("Timestamp must be a number.");
+  }
+  $roundedTimestamp = (int)(round($timestamp / 3600) * 3600);
+  return $roundedTimestamp;
+}
+// LD: pulisci testo ridondante per il sommario
+function clearLocation($testo) {
+  // Utilizza una regex per rimuovere tutto da "Aula: " in poi (incluso)
+  return preg_replace('/Aula: .*/', '', $testo);
+}
+/* LD: calcola la data di fine anno scolastico (4-giugno) */
+function getNextEndOfSchool() {
+  $today = new DateTime();
+
+  $currentYear = (int) $today->format('Y');
+
+  // Creiamo la data del 4 di giugno di quest'anno (considero come fine delle lezioni)
+  $nextDate = new DateTime("$currentYear-06-04 00:00:00");
+  if ($today > $nextDate) {
+    $nextDate->modify('+1 year');
+  }
+ return $nextDate->getTimestamp();
+}
 
 // Add a VEVENT to MRBS.   Returns TRUE on success, FALSE if the event wasn't added
 function process_event(array $vevent) : bool
 {
-  global $import_default_room, $import_default_type, $import_past, $skip;
+  global $import_default_room, $import_default_type, $import_past, $skip, $limit_eos;
   global $morningstarts, $morningstarts_minutes, $resolution;
   global $booking_types;
   global $ignore_location, $add_location;
@@ -320,7 +346,7 @@ function process_event(array $vevent) : bool
       // Get the start time because we'll need it later
       if ($property['name'] == 'DTSTART')
       {
-        $booking['start_time'] = RFC5545::getTimestamp($property['value'], $property['params']);
+        $booking['start_time'] = roundToNearestHour(RFC5545::getTimestamp($property['value'], $property['params']));
       }
     }
     else
@@ -340,6 +366,7 @@ function process_event(array $vevent) : bool
     trigger_error("No DTSTART", E_USER_WARNING);
   }
 
+
   // Now go through the properties
   foreach($properties as $property)
   {
@@ -351,7 +378,7 @@ function process_event(array $vevent) : bool
         break;
 
       case 'SUMMARY':
-        $booking['name'] = $property['value'];
+        $booking['name'] = clearLocation($property['value']);
         break;
 
       case 'DESCRIPTION':
@@ -380,7 +407,7 @@ function process_event(array $vevent) : bool
         break;
 
       case 'DTEND':
-        $booking['end_time'] = RFC5545::getTimestamp($property['value'], $property['params']);
+        $booking['end_time'] = roundToNearestHour(RFC5545::getTimestamp($property['value'], $property['params']));
         break;
 
       case 'DURATION':
@@ -486,6 +513,14 @@ function process_event(array $vevent) : bool
   if (!$import_past && ($booking['end_time'] < time()))
   {
     return false;
+  }
+
+  /* LD: skip se la data è oltre alla fine delle lezioni */
+  if ($limit_eos)
+  {
+    $date_eos = getNextEndOfSchool();
+    if ($booking['end_time'] > $date_eos)
+      return false;
   }
 
   // If we didn't manage to work out a username then just put the booking
@@ -973,7 +1008,7 @@ function get_fieldset_location_settings() : ElementFieldset
 function get_fieldset_other_settings() : ElementFieldset
 {
   global $booking_types;
-  global $import_default_type, $import_past, $skip;
+  global $import_default_type, $import_past, $skip, $limit_eos;
 
   $fieldset = new ElementFieldset();
 
@@ -1021,6 +1056,22 @@ function get_fieldset_other_settings() : ElementFieldset
         ->setChecked($skip);
   $fieldset->addElement($field);
 
+  // LD: Stop at end of school
+  // Add a hidden element (see comment above)
+  $hidden = new ElementInputHidden();
+  $hidden->setAttributes(array(
+    'name' => 'limit_eos',
+    'value' => 0
+  ));
+  $fieldset->addElement($hidden);
+  $field = new FieldInputCheckbox();
+  $field->setLabel(get_vocab('limit_end_of_school') . " " . date('d-m-Y', getNextEndOfSchool()))
+    ->setControlAttribute('name', 'limit_eos')
+    ->setChecked($limit_eos);
+  $fieldset->addElement($field);
+
+  
+
   return $fieldset;
 }
 
@@ -1051,6 +1102,7 @@ $area_room_create = get_form_var('area_room_create', 'string', '0');
 $import_default_type = get_form_var('import_default_type', 'string', $default_type);
 $import_past = get_form_var('import_past', 'string', ((empty($default_import_past)) ? '0' : '1'));
 $skip = get_form_var('skip', 'bool', empty($skip_default));
+$limit_eos = get_form_var('limit_eos', 'bool', empty($limit_eos_default));
 
 // Check the CSRF token if we're being asked to import data
 if (!empty($import))
