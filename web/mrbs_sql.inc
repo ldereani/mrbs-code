@@ -2321,6 +2321,34 @@ function mrbsGetRoomArea(int $room_id) : int
 
   return ($area_id <= 0) ? 0 : $area_id;
 }
+/* LD::MOD */
+/* Look for a date in the sorting key, if it is present then is 
+a constraint on the date valid for booking */
+function is_data_invalid($sorting_key, $timestamp) {
+  
+  // Cerca una data nel formato YYYY-MM-DD nella chiave
+  if (preg_match('/\d{4}-\d{2}-\d{2}/', $sorting_key, $matches)) {
+    $data_consentita = $matches[0]; // es. "2025-05-29"
+    
+    $data_richiesta = date('Y-m-d', $timestamp);
+    if ($data_richiesta !== $data_consentita) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function mrbsGetSortKeyArea(int $area_id) : string
+{
+  $sql = "SELECT sort_key
+            FROM " . _tbl('area') . "
+           WHERE id=?
+           LIMIT 1";
+
+  $sort_key = db()->query2($sql, array($area_id));
+  
+  return $sort_key;
+}
 
 
 // Adds an area, returning the new id, or FALSE on failure with the
@@ -2700,6 +2728,25 @@ function mrbsMakeBookings(array $bookings, ?int $id=null, bool $just_check=false
   {
    $violations[$key] = array_values(array_unique($violations[$key]));
   }
+  // LD::MOD inizio
+  if ($valid_booking) {
+    
+    // controlla che la data sia valida
+    $firstRoomId = $bookings[0]['room_id'];
+   
+    
+    $areaInfo = get_area_details(get_area($firstRoomId));
+    $sorting_key = $areaInfo['sort_key'];
+   
+
+    if (is_data_invalid($sorting_key, $date[0])) {
+      $valid_booking = false;
+      $violations['errors'] = array(get_vocab('invaliddate'));
+    }
+  }
+  
+  // LD::MOD fine
+
 
   $result = array();
   $result['valid_booking'] = $valid_booking;

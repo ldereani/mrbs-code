@@ -1546,6 +1546,21 @@ if (empty($selected_rooms))
 }
 
 // Now that we know all the data to fill the form with we start drawing it
+// LD::MOD inizio
+// get description to check if the day is valid
+if ($area > 0) {
+  
+  // Estrai la chiave di ordinamento
+  $sorting_key = mrbsGetSortKeyArea($area);
+
+  if (is_data_invalid($sorting_key, $start_time)) {
+    showInvalidDate($view, $view_all, $year, $month, $day, $area, null);
+    exit;
+  }
+
+}
+// LD::MOD fine
+
 
 // First of all, check that the user has write permission for these rooms.
 // Remove any rooms from the selection that they don't have permission for.

@@ -364,6 +364,44 @@ function showAccessDenied($view=null, $view_all=null, $year=null, $month=null, $
   // Print footer and exit
   print_footer(true);
 }
+/* showInvalidDate()
+ *
+ * Displays an appropriate message when access has been denied
+ *
+ * Returns: Nothing
+ */
+function showInvalidDate($view=null, $view_all=null, $year=null, $month=null, $day=null, $area=null, $room=null)
+{
+  global $server;
+
+  $context = array(
+      'view'      => $view,
+      'view_all'  => $view_all,
+      'year'      => $year,
+      'month'     => $month,
+      'day'       => $day,
+      'area'      => $area,
+      'room'      => isset($room) ? $room : null
+    );
+
+  print_header($context);
+
+  // Wrap the contents in a <div> to help with styling.  Not a very nice solution, but anyway.
+  echo "<div>\n";
+  echo "<h1>" . get_vocab("accessdenied") . "</h1>\n";
+  echo "<p>" . get_vocab("invaliddate") . "</p>\n";
+  $referrer = session()->getReferrer();
+  if (isset($referrer))
+  {
+    echo "<p>\n";
+    echo "<a href=\"" . htmlspecialchars($referrer) . "\">\n" . get_vocab("returnprev") . "</a>\n";
+    echo "</p>\n";
+  }
+  echo "</div>\n";
+
+  // Print footer and exit
+  print_footer(true);
+}
 
 
 // Checks whether the current user has admin rights

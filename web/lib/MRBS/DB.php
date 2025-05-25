@@ -192,7 +192,30 @@ abstract class DB
       throw new DBException($e->getMessage(), 0, $e, $sql, $params);
     }
   }
-
+  // Execute an SQL query which should return a single non-negative integer value.
+  // This is a lightweight alternative to query(), good for use with count(*)
+  // and similar queries.
+  // It returns -1 if the query returns no result, or a single NULL value, such as from
+  // a MIN or MAX aggregate function applied over no rows.
+  // Throws a DBException on error.
+  public function query2(string $sql, array $params = array()) : string
+  {
+    try
+    {
+      $sth = $this->dbh->prepare($sql);
+      $sth->execute($params);
+      $result = $sth->fetchColumn();
+      if (is_null($result) || ($result === false))
+      {
+        return "";
+      }
+      return $result;
+    }
+    catch (PDOException $e)
+    {
+      throw new DBException($e->getMessage(), 0, $e, $sql, $params);
+    }
+  }
 
   // Run an SQL query that returns a simple one dimensional array of results.
   // The SQL query must select only one column.   Returns an empty array if

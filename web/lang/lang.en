@@ -307,6 +307,7 @@ $vocab["none_outstanding"]   = "You have no bookings awaiting approval.";
 // Authentication stuff
 $vocab["accessdenied"]              = "Access Denied";
 $vocab["norights"]                  = "You do not have the necessary rights to view this page.";
+$vocab["invaliddate"]               = "Room not available on this date";
 $vocab["please_login"]              = "Please log in";
 $vocab["users.name"]                = "Username";
 $vocab["users.display_name"]        = "Name";
