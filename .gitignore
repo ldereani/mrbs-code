@@ -14,3 +14,7 @@ web/config.inc.php
 
 # Ignora i file di sistema Mac
 .DS_store
+
+**/error_log
+
+web/MALIGNANI_logo.png
