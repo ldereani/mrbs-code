@@ -292,6 +292,47 @@ function getNextEndOfSchool() {
  return $nextDate->getTimestamp();
 }
 
+function get_short_booking_name(string $summary) : string
+{
+  $summary = trim($summary);
+
+  if ($summary === '')
+  {
+    return '';
+  }
+
+  // Divide usando " - " come separatore principale
+  $parts = preg_split('/\s*-\s*/u', $summary);
+
+  // Prima parte = materia
+  $subject = trim($parts[0] ?? '');
+
+  // Terza parte = di solito classe + eventuale resto attaccato
+  $classPart = trim($parts[2] ?? '');
+
+  $class = '';
+
+  if ($classPart !== '')
+  {
+    $candidate = utf8_substr($classPart, 0, 5);
+
+    if (preg_match('/^[0-9][A-Z]{4}$/', $candidate))
+    {
+      $class = $candidate;
+    }
+  }
+
+  $name = $subject;
+
+  if (($class !== '') && ($class !== $subject))
+  {
+    $name .= ' - ' . $class;
+  }
+
+  // Sicurezza ulteriore: evita stringhe troppo lunghe
+  return utf8_substr($name, 0, 80);
+}
+
 // Add a VEVENT to MRBS.   Returns TRUE on success, FALSE if the event wasn't added
 function process_event(array $vevent) : bool
 {
@@ -1089,6 +1130,15 @@ function get_fieldset_submit_button() : ElementFieldset
   return $fieldset;
 }
 
+function delete_imported_future_entries_for_room(int $room_id) : void
+{
+  $sql = "DELETE FROM " . _tbl('entry') . "
+          WHERE room_id = ?
+            AND ical_uid LIKE ?
+            AND end_time >= UNIX_TIMESTAMP()";
+
+  db()->query($sql, array($room_id, '%Index-Education'));
+}
 
 $import = get_form_var('import', 'string');
 $source_type = get_form_var('source_type', 'string', $default_import_source);
@@ -1200,6 +1250,7 @@ if (!empty($import))
     }
     else
     {
+       $cleaned_rooms = array();
       foreach ($details['files'] as $file)
       {
         echo "<h3>" . $file['name'] . "</h3>";
@@ -1215,6 +1266,21 @@ if (!empty($import))
         }
         else
         {
+          // LD::MOD elimina tutte le prenotazioni effettuate dall'orario
+          // TODO: dovrei però verificare che l'import sia relativo all'orario
+          // e che si riferisce proprio a questa stanza
+          // Elimina le prenotazioni future importate solo per l'aula di default
+          // e solo se si sta ignorando la LOCATION del file
+          if (!empty($ignore_location) && !empty($import_default_room))
+          {
+            if (!in_array($import_default_room, $cleaned_rooms, true))
+            {
+              delete_imported_future_entries_for_room((int)$import_default_room);
+              $cleaned_rooms[] = $import_default_room;
+            }
+          }
+
+
           while (false !== ($vevent = get_event($handle)))
           {
             (process_event($vevent)) ? $n_success++ : $n_failure++;
